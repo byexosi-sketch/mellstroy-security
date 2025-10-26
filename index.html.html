@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MELLSTROY SECURITY ANALYSIS</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #0a0a0a;
+            color: #00ff00;
+            font-family: 'VT323', monospace;
+            font-size: 20px;
+            overflow: hidden;
+        }
+        
+        #terminal {
+            width: 100vw;
+            height: 100vh;
+            padding: 20px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            background: #0a0a0a;
+            position: relative;
+        }
+        
+        #terminal::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        #terminal::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        
+        #terminal::-webkit-scrollbar-thumb {
+            background: #00ff00;
+        }
+        
+        #header {
+            border: 2px solid #00ff00;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 24px;
+            letter-spacing: 2px;
+        }
+        
+        .line {
+            margin: 5px 0;
+            display: flex;
+            align-items: center;
+            opacity: 0;
+            animation: fadeIn 0.2s forwards;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+        
+        .line.error {
+            color: #ff0000;
+        }
+        
+        .line.success {
+            color: #00ff00;
+        }
+        
+        .line.warning {
+            color: #ffff00;
+        }
+        
+        .line.info {
+            color: #00ffff;
+        }
+        
+        .line.purple {
+            color: #ff00ff;
+        }
+        
+        .icon {
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            border: 1px solid #00ff00;
+            margin: 5px 0;
+            position: relative;
+            background: #0a0a0a;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: #00ff00;
+            width: 0%;
+            transition: width 0.2s linear;
+        }
+        
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 16px;
+            color: #ffffff;
+            z-index: 1;
+            font-weight: bold;
+        }
+        
+        .blink {
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+        
+        .button {
+            display: inline-block;
+            margin: 20px 0;
+            padding: 12px 30px;
+            background: #0a0a0a;
+            color: #00ff00;
+            border: 2px solid #00ff00;
+            font-family: 'VT323', monospace;
+            font-size: 20px;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.3s;
+        }
+        
+        .button:hover {
+            background: #00ff00;
+            color: #0a0a0a;
+        }
+        
+        #countdown {
+            font-size: 48px;
+            text-align: center;
+            color: #ff0000;
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px solid #ff0000;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        /* Глитч эффекты */
+        .glitch-screen {
+            animation: glitchScreen 0.3s infinite;
+        }
+        
+        @keyframes glitchScreen {
+            0% { 
+                transform: translate(0);
+                filter: hue-rotate(0deg);
+            }
+            20% { 
+                transform: translate(-10px, 10px);
+                filter: hue-rotate(90deg);
+            }
+            40% { 
+                transform: translate(10px, -10px);
+                filter: hue-rotate(180deg);
+            }
+            60% { 
+                transform: translate(-10px, -10px);
+                filter: hue-rotate(270deg);
+            }
+            80% { 
+                transform: translate(10px, 10px);
+                filter: hue-rotate(360deg);
+            }
+            100% { 
+                transform: translate(0);
+                filter: hue-rotate(0deg);
+            }
+        }
+        
+        .distortion {
+            animation: distort 0.1s infinite;
+        }
+        
+        @keyframes distort {
+            0% { transform: skew(0deg, 0deg); }
+            25% { transform: skew(2deg, -2deg); }
+            50% { transform: skew(-2deg, 2deg); }
+            75% { transform: skew(2deg, 2deg); }
+            100% { transform: skew(0deg, 0deg); }
+        }
+        
+        .red-flash {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #ff0000;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 9998;
+        }
+        
+        .red-flash.active {
+            animation: redFlash 0.2s;
+        }
+        
+        @keyframes redFlash {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Финальный оверлей */
+        #glitch-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #0a0a0a;
+            z-index: 9999;
+            display: none;
+            padding: 40px;
+            overflow: hidden;
+        }
+        
+        #glitch-overlay.active {
+            display: block;
+        }
+        
+        #final-content {
+            width: 100%;
+            height: 100%;
+            padding: 60px;
+            overflow-y: auto;
+        }
+        
+        #text-section {
+            width: 100%;
+        }
+        
+        .final-line {
+            font-size: 56px;
+            color: #ff0000;
+            margin: 8px 0;
+            opacity: 1;
+            font-family: 'VT323', monospace;
+            text-align: left;
+        }
+        
+        .final-line.green {
+            color: #00ff00;
+        }
+        
+        .final-line.white {
+            color: #ffffff;
+        }
+        
+        .final-line.red {
+            color: #ff0000;
+        }
+        
+        #mellstroy-logo {
+            font-size: 80px;
+            font-weight: bold;
+            color: #ff0000;
+            letter-spacing: 10px;
+            font-family: 'VT323', monospace;
+            opacity: 0;
+        }
+        
+        #mellstroy-logo.show {
+            opacity: 1;
+        }
+        
+        .casino-icon {
+            width: 64px;
+            height: 64px;
+            margin: 10px 0;
+            opacity: 1;
+            display: inline-block;
+        }
+        
+        .pulse-text {
+            animation: textPulse 2s infinite;
+        }
+        
+        @keyframes textPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Дождь из монет */
+        .coin-rain {
+            position: fixed;
+            top: -50px;
+            pointer-events: none;
+            z-index: 10000;
+            animation: fall linear infinite;
+        }
+        
+        .coin-svg {
+            width: 32px;
+            height: 32px;
+        }
+        
+        @keyframes fall {
+            to {
+                transform: translateY(120vh) rotate(360deg);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="red-flash" id="redFlash"></div>
+    
+    <div id="glitch-overlay">
+        <div id="final-content">
+            <div id="text-section"></div>
+        </div>
+    </div>
+    
+    <div id="terminal">
+        <div id="header">
+            [ UNAUTHORIZED ACCESS ATTEMPT - mellstroy.game ]
+        </div>
+        <div id="content"></div>
+        <button class="button" onclick="startHack()">[ START ATTACK ]</button>
+    </div>
+
+    <script>
+        // SVG иконки (пиксель-арт)
+        const icons = {
+            arrow: `<svg class="icon" viewBox="0 0 16 16" fill="currentColor"><rect x="0" y="7" width="12" height="2"/><rect x="10" y="5" width="2" height="2"/><rect x="10" y="9" width="2" height="2"/><rect x="12" y="3" width="2" height="2"/><rect x="12" y="11" width="2" height="2"/></svg>`,
+            
+            check: `<svg class="icon" viewBox="0 0 16 16" fill="#00ff00"><rect x="2" y="8" width="2" height="2"/><rect x="4" y="10" width="2" height="2"/><rect x="6" y="12" width="2" height="2"/><rect x="8" y="10" width="2" height="2"/><rect x="10" y="8" width="2" height="2"/><rect x="12" y="6" width="2" height="2"/><rect x="14" y="4" width="2" height="2"/></svg>`,
+            
+            error: `<svg class="icon" viewBox="0 0 16 16" fill="#ff0000"><rect x="2" y="2" width="2" height="2"/><rect x="4" y="4" width="2" height="2"/><rect x="6" y="6" width="2" height="2"/><rect x="8" y="8" width="2" height="2"/><rect x="10" y="10" width="2" height="2"/><rect x="12" y="12" width="2" height="2"/><rect x="12" y="2" width="2" height="2"/><rect x="10" y="4" width="2" height="2"/><rect x="6" y="8" width="2" height="2"/><rect x="4" y="10" width="2" height="2"/><rect x="2" y="12" width="2" height="2"/></svg>`,
+            
+            warning: `<svg class="icon" viewBox="0 0 16 16" fill="#ffff00"><rect x="7" y="2" width="2" height="2"/><rect x="5" y="4" width="6" height="2"/><rect x="3" y="6" width="10" height="2"/><rect x="1" y="8" width="14" height="6"/><rect x="7" y="10" width="2" height="2"/></svg>`,
+            
+            lock: `<svg class="icon" viewBox="0 0 16 16" fill="#ffff00"><rect x="4" y="6" width="8" height="8"/><rect x="6" y="4" width="4" height="2"/><rect x="5" y="3" width="2" height="1"/><rect x="9" y="3" width="2" height="1"/><rect x="7" y="9" width="2" height="3"/></svg>`,
+            
+            shield: `<svg class="icon" viewBox="0 0 16 16" fill="#00ff00"><rect x="6" y="2" width="4" height="2"/><rect x="4" y="4" width="8" height="2"/><rect x="3" y="6" width="10" height="2"/><rect x="2" y="8" width="12" height="2"/><rect x="3" y="10" width="10" height="2"/><rect x="5" y="12" width="6" height="2"/><rect x="7" y="14" width="2" height="2"/></svg>`,
+            
+            skull: `<svg class="icon" viewBox="0 0 16 16" fill="#ff0000"><rect x="4" y="2" width="8" height="8"/><rect x="5" y="4" width="2" height="2"/><rect x="9" y="4" width="2" height="2"/><rect x="6" y="7" width="4" height="1"/><rect x="3" y="10" width="10" height="2"/><rect x="4" y="12" width="2" height="2"/><rect x="10" y="12" width="2" height="2"/></svg>`,
+            
+            target: `<svg class="icon" viewBox="0 0 16 16" fill="#ff00ff"><rect x="0" y="7" width="6" height="2"/><rect x="10" y="7" width="6" height="2"/><rect x="7" y="0" width="2" height="6"/><rect x="7" y="10" width="2" height="6"/><rect x="4" y="4" width="8" height="8"/><rect x="6" y="6" width="4" height="4"/></svg>`,
+            
+            download: `<svg class="icon" viewBox="0 0 16 16" fill="#00ffff"><rect x="7" y="2" width="2" height="8"/><rect x="5" y="8" width="6" height="2"/><rect x="3" y="10" width="10" height="2"/><rect x="1" y="12" width="14" height="2"/></svg>`,
+            
+            fire: `<svg class="icon" viewBox="0 0 16 16" fill="#ff0000"><rect x="7" y="2" width="2" height="2"/><rect x="5" y="4" width="6" height="2"/><rect x="4" y="6" width="8" height="2"/><rect x="3" y="8" width="10" height="2"/><rect x="4" y="10" width="8" height="2"/><rect x="5" y="12" width="6" height="2"/></svg>`
+        };
+        
+        // Звуки
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playBeep(frequency = 800, duration = 50) {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = frequency;
+            oscillator.type = 'square';
+            
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration / 1000);
+        }
+        
+        const content = document.getElementById('content');
+        const terminal = document.getElementById('terminal');
+        
+        function randomIP() {
+            return `${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}`;
+        }
+        
+        function randomHex(length = 16) {
+            return Array.from({length}, () => Math.floor(Math.random() * 16).toString(16).toUpperCase()).join('');
+        }
+        
+        function randomPort() {
+            return Math.floor(Math.random() * 64535) + 1000;
+        }
+        
+        const targetIP = randomIP();
+        const hackerIP = randomIP();
+        const sessionKey = randomHex(32);
+        
+        const hackSequence = [
+            { text: 'Initializing attack sequence...', delay: 400, icon: 'arrow' },
+            { text: `Your IP: ${hackerIP}`, delay: 300, class: 'purple', icon: 'target' },
+            { text: `Target: mellstroy.game [${targetIP}]`, delay: 400, class: 'warning', icon: 'target' },
+            { text: `Session Key: ${sessionKey}`, delay: 300, class: 'purple', icon: 'lock' },
+            { text: '', delay: 200 },
+            { text: 'Loading exploit modules...', delay: 500, icon: 'download' },
+            { text: '[OK] SQLi module loaded', delay: 300, class: 'success', icon: 'check' },
+            { text: '[OK] XSS module loaded', delay: 300, class: 'success', icon: 'check' },
+            { text: '[OK] DDoS module loaded', delay: 300, class: 'success', icon: 'check' },
+            { text: '[OK] Brute-force module loaded', delay: 300, class: 'success', icon: 'check' },
+            { text: '', delay: 300 },
+            { text: 'Establishing secure tunnel...', delay: 400, icon: 'arrow' },
+            { 
+                text: 'Connecting through TOR network...', 
+                delay: 800, 
+                icon: 'download',
+                progress: true,
+                progressSteps: [20, 40, 60, 80, 100]
+            },
+            { text: '[OK] Anonymous connection established', delay: 400, class: 'success', icon: 'check' },
+            { text: '', delay: 300 },
+            { text: '[ ATTACK INITIATED ]', delay: 600, class: 'error blink', icon: 'fire' },
+            { text: '', delay: 300 },
+            { text: `Scanning ports on ${targetIP}...`, delay: 500, class: 'warning', icon: 'target' },
+            { text: `Port ${randomPort()}: CLOSED`, delay: 250, icon: 'arrow' },
+            { text: `Port ${randomPort()}: CLOSED`, delay: 250, icon: 'arrow' },
+            { text: `Port ${randomPort()}: FILTERED`, delay: 250, class: 'warning', icon: 'warning' },
+            { text: `Port 443: PROTECTED BY CLOUDFLARE`, delay: 400, class: 'error', icon: 'error' },
+            { text: `Port 80: PROTECTED BY CLOUDFLARE`, delay: 400, class: 'error', icon: 'error' },
+            { text: '', delay: 300 },
+            { text: 'Attempting SQL injection attack...', delay: 500, class: 'warning', icon: 'fire' },
+            { 
+                text: 'Sending malicious payload...', 
+                delay: 900, 
+                icon: 'download',
+                progress: true,
+                progressSteps: [25, 50, 75, 100]
+            },
+            { text: '[ERROR] WAF detected attack pattern!', delay: 500, class: 'error', icon: 'error' },
+            { text: '[ERROR] IP address blocked!', delay: 400, class: 'error', icon: 'error' },
+            { text: '', delay: 300 },
+            { text: 'Rotating IP address...', delay: 400, class: 'warning', icon: 'arrow' },
+            { text: `New IP: ${randomIP()}`, delay: 400, class: 'purple', icon: 'target' },
+            { text: '', delay: 300 },
+            { text: 'Attempting XSS attack...', delay: 500, class: 'warning', icon: 'fire' },
+            { text: '[ERROR] CSP policy blocks scripts!', delay: 500, class: 'error', icon: 'error' },
+            { text: '', delay: 300 },
+            { text: 'Attempting brute-force attack...', delay: 500, class: 'warning', icon: 'fire' },
+            { text: 'Testing password combinations...', delay: 400, icon: 'arrow' },
+            { 
+                text: 'Brute-forcing credentials...', 
+                delay: 1000, 
+                icon: 'download',
+                progress: true,
+                progressSteps: [15, 30, 50, 75, 100]
+            },
+            { text: '[ERROR] Rate limiting detected!', delay: 500, class: 'error', icon: 'error' },
+            { text: '[ERROR] Account lockout activated!', delay: 400, class: 'error', icon: 'error' },
+            { text: '', delay: 300 },
+            { text: 'Launching critical attack...', delay: 500, class: 'error', icon: 'fire' },
+            { text: 'Initializing DDoS module...', delay: 500, class: 'error', icon: 'skull' },
+            { text: '', delay: 300 },
+            { text: '[ THREAT DETECTED BY SYSTEM ]', delay: 600, class: 'error blink', icon: 'warning' },
+            { text: '', delay: 400 },
+            { text: '[ALERT] Quantum encryption detected', delay: 400, class: 'error', icon: 'shield' },
+            { text: '[ALERT] AI-powered defense active', delay: 400, class: 'error', icon: 'shield' },
+            { text: '[ALERT] Biometric verification active', delay: 400, class: 'error', icon: 'shield' },
+            { text: '[ALERT] Blockchain verification active', delay: 400, class: 'error', icon: 'shield' },
+            { text: '[ALERT] Multi-layer encryption active', delay: 400, class: 'error', icon: 'shield' },
+            { text: '', delay: 500 },
+            { text: '[ SYSTEM COUNTER-ATTACK ]', delay: 600, class: 'error blink', icon: 'fire' },
+            { text: '', delay: 400, countdown: true },
+            { text: '[CRITICAL] Tracing your location...', delay: 700, class: 'error', icon: 'target' },
+            { 
+                text: 'Determining coordinates...', 
+                delay: 1000, 
+                class: 'error', 
+                icon: 'target',
+                progress: true,
+                progressSteps: [30, 60, 90, 100]
+            },
+            { text: '[SYSTEM] Terminating attack...', delay: 600, class: 'error', icon: 'error' },
+            { text: '[SYSTEM] Closing connection...', delay: 500, class: 'error', icon: 'error' },
+            { text: '', delay: 600 },
+            { text: '====================================', delay: 200, class: 'success' },
+            { text: '', delay: 100 },
+            { text: '    ATTACK VERDICT: FAILED', delay: 300, class: 'error' },
+            { text: '', delay: 100 },
+            { text: '====================================', delay: 200, class: 'success' },
+            { text: '', delay: 600, final: true }
+        ];
+        
+        function addLine(text, className = '', iconName = '') {
+            const line = document.createElement('div');
+            line.className = 'line ' + className;
+            
+            if (iconName && icons[iconName]) {
+                line.innerHTML = icons[iconName] + text;
+            } else {
+                line.textContent = text;
+            }
+            
+            content.appendChild(line);
+            terminal.scrollTop = terminal.scrollHeight;
+            return line;
+        }
+        
+        function addProgressBar(text) {
+            const container = document.createElement('div');
+            container.className = 'line';
+            
+            const progressBar = document.createElement('div');
+            progressBar.className = 'progress-bar';
+            
+            const progressFill = document.createElement('div');
+            progressFill.className = 'progress-fill';
+            
+            const progressText = document.createElement('div');
+            progressText.className = 'progress-text';
+            progressText.textContent = '0%';
+            
+            progressBar.appendChild(progressFill);
+            progressBar.appendChild(progressText);
+            container.appendChild(progressBar);
+            content.appendChild(container);
+            
+            terminal.scrollTop = terminal.scrollHeight;
+            
+            return { progressFill, progressText };
+        }
+        
+        async function showCountdown() {
+            const countdownDiv = document.createElement('div');
+            countdownDiv.id = 'countdown';
+            content.appendChild(countdownDiv);
+            
+            for (let i = 3; i > 0; i--) {
+                countdownDiv.textContent = `[ ATTACK IN: ${i} ]`;
+                playBeep(400, 100);
+                terminal.scrollTop = terminal.scrollHeight;
+                await new Promise(resolve => setTimeout(resolve, 700));
+            }
+            
+            countdownDiv.remove();
+        }
+        
+        function createCoinRain() {
+            // Пиксельная монета SVG
+            const coinSVG = `
+                <svg class="coin-svg" viewBox="0 0 16 16" fill="#00ff00">
+                    <rect x="4" y="2" width="8" height="12"/>
+                    <rect x="2" y="4" width="12" height="8"/>
+                    <rect x="6" y="5" width="4" height="6" fill="#0a0a0a"/>
+                    <rect x="7" y="6" width="2" height="4" fill="#00ff00"/>
+                </svg>
+            `;
+            
+            function spawnCoin() {
+                const coin = document.createElement('div');
+                coin.className = 'coin-rain';
+                coin.innerHTML = coinSVG;
+                coin.style.left = Math.random() * 100 + 'vw';
+                coin.style.animationDuration = (4 + Math.random() * 3) + 's';
+                document.body.appendChild(coin);
+                
+                setTimeout(() => {
+                    coin.remove();
+                }, 8000);
+            }
+            
+            // Запускаем монеты каждые 200мс бесконечно
+            setInterval(() => {
+                spawnCoin();
+            }, 200);
+            
+            // Сразу создаём первые монеты
+            for (let i = 0; i < 20; i++) {
+                setTimeout(() => spawnCoin(), i * 100);
+            }
+        }
+        
+        async function typeFinalLine(text, className = '', icon = '') {
+            const textSection = document.getElementById('text-section');
+            const line = document.createElement('div');
+            line.className = 'final-line ' + className;
+            
+            if (icon === 'casino') {
+                // SVG иконка казино (пиксельная)
+                const casinoSvg = `
+                    <svg class="casino-icon" viewBox="0 0 64 64" fill="#00ff00">
+                        <!-- Игровой автомат -->
+                        <rect x="16" y="8" width="32" height="48"/>
+                        <rect x="20" y="12" width="24" height="20" fill="#0a0a0a"/>
+                        <!-- Слоты -->
+                        <rect x="22" y="16" width="6" height="12" fill="#00ff00"/>
+                        <rect x="29" y="16" width="6" height="12" fill="#00ff00"/>
+                        <rect x="36" y="16" width="6" height="12" fill="#00ff00"/>
+                        <!-- 7 7 7 -->
+                        <text x="24" y="25" fill="#ff0000" font-size="8" font-family="VT323">7</text>
+                        <text x="31" y="25" fill="#ff0000" font-size="8" font-family="VT323">7</text>
+                        <text x="38" y="25" fill="#ff0000" font-size="8" font-family="VT323">7</text>
+                        <!-- Кнопки -->
+                        <rect x="22" y="36" width="8" height="6" fill="#ff0000"/>
+                        <rect x="34" y="36" width="8" height="6" fill="#ff0000"/>
+                        <!-- Ножка -->
+                        <rect x="28" y="56" width="8" height="8"/>
+                    </svg>
+                `;
+                line.innerHTML = casinoSvg;
+                textSection.appendChild(line);
+            } else {
+                textSection.appendChild(line);
+                
+                // Печатаем текст посимвольно (typewriter эффект)
+                for (let i = 0; i < text.length; i++) {
+                    line.textContent += text[i];
+                    if (Math.random() > 0.5) playBeep(300 + Math.random() * 200, 20);
+                    await new Promise(resolve => setTimeout(resolve, 30));
+                }
+            }
+            
+            // Автоскролл
+            const finalContent = document.getElementById('final-content');
+            finalContent.scrollTop = finalContent.scrollHeight;
+            await new Promise(resolve => setTimeout(resolve, 50));
+        }
+        
+        async function epicGlitchEnding() {
+            const redFlash = document.getElementById('redFlash');
+            const glitchOverlay = document.getElementById('glitch-overlay');
+            
+            // Финальное сообщение перед глитчем (быстрее)
+            addLine('[ SYSTEM BREACH SUCCESSFUL... ]', 'success blink');
+            await new Promise(resolve => setTimeout(resolve, 600));
+            addLine('[ ACCESSING CORE... ]', 'success');
+            await new Promise(resolve => setTimeout(resolve, 400));
+            addLine('[ DOWNLOADING DATA... ]', 'success');
+            await new Promise(resolve => setTimeout(resolve, 400));
+            
+            // Начинаем глитчить (быстрее)
+            addLine('', '');
+            addLine('[ WAIT... SOMETHING IS WRONG ]', 'warning blink');
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Красные вспышки (быстрее)
+            for (let i = 0; i < 4; i++) {
+                redFlash.classList.add('active');
+                playBeep(100, 150);
+                await new Promise(resolve => setTimeout(resolve, 120));
+                redFlash.classList.remove('active');
+                await new Promise(resolve => setTimeout(resolve, 80));
+            }
+            
+            // Экран начинает ломаться
+            terminal.classList.add('glitch-screen');
+            addLine('[ ERROR ERROR ERROR ]', 'error blink');
+            playBeep(80, 300);
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
+            // Больше глитча (быстрее)
+            for (let i = 0; i < 6; i++) {
+                redFlash.classList.add('active');
+                playBeep(50 + i * 10, 80);
+                await new Promise(resolve => setTimeout(resolve, 80));
+                redFlash.classList.remove('active');
+                await new Promise(resolve => setTimeout(resolve, 40));
+            }
+            
+            addLine('[ COUNTER-ATTACK INITIATED ]', 'error blink');
+            terminal.classList.add('distortion');
+            playBeep(60, 400);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Мощная серия вспышек (быстрее)
+            for (let i = 0; i < 8; i++) {
+                redFlash.classList.add('active');
+                playBeep(40, 60);
+                await new Promise(resolve => setTimeout(resolve, 60));
+                redFlash.classList.remove('active');
+                await new Promise(resolve => setTimeout(resolve, 30));
+            }
+            
+            // БУУУМ - появляется оверлей
+            redFlash.classList.add('active');
+            playBeep(30, 800);
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            // Показываем оверлей
+            glitchOverlay.classList.add('active');
+            terminal.style.display = 'none';
+            
+            // Убираем красную вспышку
+            setTimeout(() => {
+                redFlash.classList.remove('active');
+            }, 300);
+            
+            await new Promise(resolve => setTimeout(resolve, 400));
+            
+            // Начинаем бесконечный дождь из монет
+            createCoinRain();
+            
+            // Печатаем текст построчно (typewriter style, English) - быстрее
+            await typeFinalLine('> MELLSTROY', 'red');
+            await typeFinalLine('', '');
+            await typeFinalLine('> YOU GOT CAUGHT!', 'red');
+            await typeFinalLine('> SYSTEM TRACED YOU', 'red');
+            await typeFinalLine('', '');
+            await typeFinalLine('> VISIT', 'green');
+            await typeFinalLine('', '');
+            
+            // Добавляем пульсирующий текст (быстрее)
+            const textSection = document.getElementById('text-section');
+            const pulseLine = document.createElement('div');
+            pulseLine.className = 'final-line green pulse-text';
+            pulseLine.style.fontSize = '64px';
+            textSection.appendChild(pulseLine);
+            
+            const gameText = '> MELLSTROY.GAME';
+            for (let i = 0; i < gameText.length; i++) {
+                pulseLine.textContent += gameText[i];
+                if (Math.random() > 0.5) playBeep(400 + Math.random() * 200, 20);
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 200));
+            await typeFinalLine('', '');
+            await typeFinalLine('> AND TRY YOUR LUCK!', 'green');
+            
+            const finalContent = document.getElementById('final-content');
+            finalContent.scrollTop = finalContent.scrollHeight;
+        }
+        
+        async function startHack() {
+            document.querySelector('.button').style.display = 'none';
+            content.innerHTML = '';
+            
+            for (let item of hackSequence) {
+                await new Promise(resolve => setTimeout(resolve, item.delay));
+                
+                if (Math.random() > 0.7) {
+                    playBeep(200 + Math.random() * 200, 30);
+                }
+                
+                if (item.countdown) {
+                    await showCountdown();
+                    continue;
+                }
+                
+                if (item.progress) {
+                    addLine(item.text, item.class, item.icon);
+                    const { progressFill, progressText } = addProgressBar();
+                    
+                    for (let step of item.progressSteps) {
+                        await new Promise(resolve => setTimeout(resolve, 150));
+                        progressFill.style.width = step + '%';
+                        progressText.textContent = step + '%';
+                        terminal.scrollTop = terminal.scrollHeight;
+                        if (Math.random() > 0.5) playBeep(300 + Math.random() * 200, 30);
+                    }
+                } else if (item.final) {
+                    // Эпичная концовка с глитчем
+                    await epicGlitchEnding();
+                } else {
+                    addLine(item.text, item.class, item.icon);
+                }
+            }
+            
+            setTimeout(() => {
+                const restartBtn = document.createElement('button');
+                restartBtn.className = 'button';
+                restartBtn.textContent = '[ RESTART ]';
+                restartBtn.onclick = () => location.reload();
+                content.appendChild(restartBtn);
+                terminal.scrollTop = terminal.scrollHeight;
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
